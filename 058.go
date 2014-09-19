@@ -1,33 +1,28 @@
 package main
 
 import (
-    "fmt"
-    "math"
+	"net/http"
 )
 
-type ErrNegativeSqrt float64
+type String string
 
-func (e ErrNegativeSqrt) Error() string {
-    return fmt.Sprintf("cannot Sqrt negative number: %.f", e)
+func (s String) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	rw.Write([]byte(s))
 }
 
-func Sqrt(x float64) (float64, error) {
-    if x < 0.0 {
-        return 0.0, ErrNegativeSqrt(x)
-    }
-    z := 1.0
-    prev := 0.0
-    for {
-        z = z - (z*z - x) / (x * 2)
-        if math.Abs(z - prev) < 0.00000000001 {
-		    return z, nil
-        }
-        prev = z
-    }
+type Struct struct {
+	Greeting string
+	Punct    string
+	Who      string
 }
 
+func (s *Struct) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	rw.Write([]byte(s.Greeting + s.Punct + s.Who))
+}
 
 func main() {
-    fmt.Println(Sqrt(2))
-    fmt.Println(Sqrt(-2))
+	// your http.Handle calls here
+	http.Handle("/string", String("I'm a frayed knot."))
+	http.Handle("/struct", &Struct{"Hello", ":", "Gophers!"})
+	http.ListenAndServe("localhost:4000", nil)
 }
