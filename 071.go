@@ -20,46 +20,65 @@ var existsPages map[string]bool
 
 // Crawl uses fetcher to recursively crawl
 // pages starting with url, to a maximum of depth.
-func Crawl(url string, depth int, fetcher Fetcher, fin chan int) {
-    // TODO: Fetch URLs in parallel.
-    // TODO: Don't fetch the same URL twice.
-    // This implementation doesn't do either:
+func Crawl(url string, depth int, fetcher Fetcher) {
+    // Run crawl via gorutine
+    finish := make(chan bool)
+    go crawl(url, depth, fetcher, finish)
+    <- finish
+}
+
+func crawl(url string, depth int, fetcher Fetcher, finish chan bool){
+    // return when fetched or non depth 
     if _, exists := existsPages[url]; exists || depth <= 0 {
-        fin <- 1
+        finish <- false
         return
     }
     
-    
+    // fetch the page
     body, urls, err := fetcher.Fetch(url)
+    
+    // add to fetched pages map for check exists
     existsPages[url] = true
     
+    // on error
    	if err != nil {
         fmt.Println(err)
-        fin <- 1
+        finish <- false
         return
     }
     
+    // export result
     fmt.Printf("found: %s %q\n", url, body)
+    
+    // deps pages countor
     depsPagesCount := 0
-    finCh := make(chan int)
+    
+    // deps pages check channel
+    depsPagesFinishCh := make(chan bool)
+    
+    // do crawl all deps pages
     for _, u := range urls {
-        go Crawl(u, depth-1, fetcher, finCh)
+        // crawl depth page
+        go crawl(u, depth-1, fetcher, depsPagesFinishCh)
+        
+        // increment deps pages countor for wait
         depsPagesCount++
     }
+    
+    // wait all deps pages crawling
     for i := 0; i < depsPagesCount; i++ {
-        <- finCh
+        <- depsPagesFinishCh
     }
-	fin <- 1
-	
+    
+    // finish crawl
+	finish <- true
     return
 }
 
 func main() {
     existsPages = make(map[string]bool)
-    comp := make(chan int)
-    go Crawl("http://golang.org/", 4, fetcher, comp)
-    <-comp
-    fmt.Println("finish!")
+    Crawl("http://golang.org/", 4, fetcher)
+    fmt.Println("Finish!!")
 }
 
 // fakeFetcher is Fetcher that returns canned results.
