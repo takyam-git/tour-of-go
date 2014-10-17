@@ -10,12 +10,7 @@ type Fetcher interface {
     Fetch(url string) (body string, urls []string, err error)
 }
 
-type Page struct {
-    Body string
-    Urls []string
-    Err error
-}
-
+// map for check fetched
 var existsPages map[string]bool
 
 // Crawl uses fetcher to recursively crawl
